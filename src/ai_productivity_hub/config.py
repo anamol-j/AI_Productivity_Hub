@@ -13,7 +13,6 @@ class AppConfig:
     openai_api_key: str
     gemini_api_key: str
     groq_api_key: str
-    serpapi_api_key: str
     openai_model: str
     gemini_model: str
     groq_model: str
@@ -45,7 +44,6 @@ def load_config() -> AppConfig:
         openai_api_key=os.getenv("OPENAI_API_KEY", ""),
         gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
         groq_api_key=os.getenv("GROQ_API_KEY", ""),
-        serpapi_api_key=os.getenv("SERPAPI_API_KEY", ""),
         openai_model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         gemini_model=os.getenv("GEMINI_MODEL", "gemini-1.5-flash"),
         groq_model=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),

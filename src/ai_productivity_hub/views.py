@@ -16,7 +16,6 @@ from ai_productivity_hub.services.document_tools import (
     parse_resume,
     summarize_text_stats,
 )
-from ai_productivity_hub.services.research_tools import format_sources, search_web
 from ai_productivity_hub.services.youtube_tools import fetch_transcript, important_timestamps, transcript_to_text
 
 
@@ -24,9 +23,7 @@ MENU_OPTIONS = [
     "Dashboard",
     "YouTube Summarizer",
     "Resume Parser",
-    "Web Research Agent",
     "PDF Chat",
-    "Study Assistant",
     "Meeting Notes Agent",
     "Email Generator",
     "Project Generator",
@@ -37,9 +34,7 @@ WORKFLOW_NOTES = {
     "Dashboard": "Workspace overview",
     "YouTube Summarizer": "Transcript to summary",
     "Resume Parser": "JD match scoring",
-    "Web Research Agent": "Search backed reports",
     "PDF Chat": "Ask uploaded PDFs",
-    "Study Assistant": "Revision packs",
     "Meeting Notes Agent": "Decisions and tasks",
     "Email Generator": "Ready drafts",
     "Project Generator": "Plans and scope",
@@ -49,9 +44,7 @@ WORKFLOW_NOTES = {
 ACTION_LABELS = {
     "youtube": "Generate Video Brief",
     "resume": "Analyze Resume Fit",
-    "research": "Build Research Report",
     "pdf": "Ask Document AI",
-    "study": "Create Study Pack",
     "meeting": "Extract Meeting Notes",
     "email": "Draft Email",
     "project": "Generate Build Plan",
@@ -61,9 +54,7 @@ NAV_ICONS = {
     "Dashboard": "Overview",
     "YouTube Summarizer": "Video",
     "Resume Parser": "Resume",
-    "Web Research Agent": "Research",
     "PDF Chat": "PDF",
-    "Study Assistant": "Study",
     "Meeting Notes Agent": "Meeting",
     "Email Generator": "Email",
     "Project Generator": "Project",
@@ -82,9 +73,7 @@ def render_app(config: AppConfig) -> None:
         "Dashboard": lambda: render_dashboard(config),
         "YouTube Summarizer": lambda: render_youtube_page(client),
         "Resume Parser": lambda: render_resume_page(client),
-        "Web Research Agent": lambda: render_research_page(client),
         "PDF Chat": lambda: render_pdf_chat_page(client),
-        "Study Assistant": lambda: render_study_page(client),
         "Meeting Notes Agent": lambda: render_meeting_notes_page(client),
         "Email Generator": lambda: render_email_page(client),
         "Project Generator": lambda: render_project_page(client),
@@ -94,16 +83,15 @@ def render_app(config: AppConfig) -> None:
 
 
 def render_dashboard(config: AppConfig) -> None:
-    _page_header("AI Productivity Hub", "A premium AI workspace for research, documents, videos, study packs, and drafting workflows.")
+    _page_header("AI Productivity Hub", "A premium AI workspace for documents, videos, resumes, and drafting workflows.")
     _status_strip(config)
 
     metrics = st.session_state.metrics
     st.markdown("<div class='section-title'>Workspace Snapshot</div>", unsafe_allow_html=True)
-    cols = st.columns(4)
+    cols = st.columns(3)
     cards = [
         ("Documents", metrics["documents"], "PDF and resume files"),
         ("Videos", metrics["videos"], "Transcript summaries"),
-        ("Reports", metrics["reports"], "Research outputs"),
         ("Resumes", metrics["resumes"], "Parsed profiles"),
     ]
     for col, (label, value, caption) in zip(cols, cards):
@@ -131,9 +119,7 @@ def render_dashboard(config: AppConfig) -> None:
     modules = [
         ("YouTube Summarizer", "Extract transcript summaries, key points, action items, timestamps, and quizzes."),
         ("Resume Parser", "Match resumes against a job description with labeled scoring and skill gap analysis."),
-        ("Web Research Agent", "Collect sources and synthesize a structured report with references."),
         ("PDF Chat", "Ask targeted questions against relevant chunks from an uploaded PDF."),
-        ("Study Assistant", "Generate summaries, MCQs, flashcards, and revision notes for a topic."),
         ("Meeting Notes Agent", "Turn transcripts into decisions, deadlines, and action items."),
         ("Email Generator", "Draft polished professional messages for common intents."),
         ("Project Generator", "Create requirements, architecture, feature scope, stack, and timelines."),
@@ -255,46 +241,6 @@ def render_resume_page(client: AIClient) -> None:
             _result_panel(analysis)
 
 
-def render_research_page(client: AIClient) -> None:
-    _page_header("Web Research Agent", "Search the web and synthesize a source-backed report.")
-
-    with st.form("research-form"):
-        topic = st.text_input("Research Topic", placeholder="Artificial Intelligence in Healthcare")
-        max_results = st.slider("Sources", min_value=3, max_value=8, value=5)
-        submitted = st.form_submit_button(ACTION_LABELS["research"], use_container_width=True)
-
-    if submitted:
-        if not topic.strip():
-            st.error("Enter a research topic.")
-            return
-        with st.spinner("Collecting sources and drafting the report..."):
-            results = search_web(topic, max_results=max_results)
-            source_text = format_sources(results)
-            system_prompt, user_prompt = structured_report_prompt(
-                "Create a report with Executive Summary, Main Findings, Pros, Cons, Future Trends, and References.",
-                source_text,
-            )
-            fallback = dedent(
-                f"""
-                ## Executive Summary
-                Retrieved {len(results)} sources for {topic}.
-
-                ## Main Findings
-                {chr(10).join(f'- {result.title}: {result.body}' for result in results[:3])}
-
-                ## References
-                {chr(10).join(f'- {result.title} - {result.href}' for result in results)}
-                """
-            ).strip()
-            report = client.try_generate(system_prompt, user_prompt, fallback)
-
-        st.session_state.metrics["reports"] += 1
-        _result_panel(report)
-        with st.expander("Collected Sources", expanded=True):
-            for result in results:
-                st.markdown(f"**{result.title}**  \n{result.href}")
-
-
 def render_pdf_chat_page(client: AIClient) -> None:
     _page_header("PDF Chat", "Ask questions against the most relevant extracted PDF chunks.")
 
@@ -322,39 +268,6 @@ def render_pdf_chat_page(client: AIClient) -> None:
         _result_panel(answer)
         with st.expander("Document Stats"):
             st.json(summarize_text_stats(text))
-
-
-def render_study_page(client: AIClient) -> None:
-    _page_header("Study Assistant", "Generate revision material for a subject or unit.")
-
-    with st.form("study-form"):
-        topic = st.text_input("Study Topic", placeholder="Operating System Unit 3")
-        focus = st.selectbox("Focus", ["Balanced", "Exam Prep", "Concept Review", "Interview Prep"])
-        submitted = st.form_submit_button(ACTION_LABELS["study"], use_container_width=True)
-
-    if submitted:
-        if not topic.strip():
-            st.error("Enter a study topic.")
-            return
-        task = f"Create a {focus.lower()} study pack with Summary, Important Questions, MCQs, Flashcards, and Revision Notes."
-        system_prompt, user_prompt = structured_report_prompt(task, topic)
-        fallback = dedent(
-            f"""
-            ## Summary
-            Study pack placeholder for {topic}.
-
-            ## Important Questions
-            - Explain the key concepts in {topic}.
-
-            ## MCQs
-            1. What is the main purpose of {topic}?
-
-            ## Flashcards
-            - Front: Core definition
-            - Back: Add an API key to generate full content.
-            """
-        ).strip()
-        _result_panel(client.try_generate(system_prompt, user_prompt, fallback))
 
 
 def render_meeting_notes_page(client: AIClient) -> None:
@@ -480,7 +393,6 @@ def render_settings(config: AppConfig) -> None:
         ("OpenAI", config.openai_api_key),
         ("Gemini", config.gemini_api_key),
         ("Groq", config.groq_api_key),
-        ("SerpAPI", config.serpapi_api_key),
     ]
     for name, value in rows:
         state = "Configured" if value.strip() else "Missing"
@@ -539,7 +451,6 @@ def _ensure_session_state() -> None:
         st.session_state.metrics = {
             "documents": 0,
             "videos": 0,
-            "reports": 0,
             "resumes": 0,
         }
     if "selected_menu" not in st.session_state:
@@ -589,7 +500,7 @@ def _activity_feed() -> None:
     rows = [
         ("Video summaries", "Generate timestamped video briefs from YouTube transcripts.", "Live"),
         ("Document AI", "Upload PDFs and ask questions against matching sections.", "Ready"),
-        ("Research reports", "Collect web sources and produce structured reports.", "Ready"),
+        ("Resume matching", "Score resumes against job descriptions with labeled skill gaps.", "Ready"),
     ]
     for title, body, label in rows:
         st.markdown(
@@ -612,7 +523,7 @@ def _popular_prompts() -> None:
     prompts = [
         "Summarize This Video",
         "Improve My Resume",
-        "Research AI Trends",
+        "Draft Professional Email",
         "Plan My Project",
     ]
     for col, prompt in zip(cols, prompts):
@@ -641,7 +552,6 @@ def _sidebar_snapshot() -> None:
         <div class='side-grid'>
             <div><small>Documents</small><strong>{metrics["documents"]}</strong></div>
             <div><small>Videos</small><strong>{metrics["videos"]}</strong></div>
-            <div><small>Reports</small><strong>{metrics["reports"]}</strong></div>
             <div><small>Resumes</small><strong>{metrics["resumes"]}</strong></div>
         </div>
         """,

@@ -187,23 +187,41 @@ def extract_jd_title(job_description: str) -> str:
     return "Job Role"
 
 
+def _normalize_jd_skill(skill: str) -> str | None:
+    cleaned = re.sub(r"\s+", " ", skill.strip(" .;:-")).lower()
+    if len(cleaned) < 2 or len(cleaned) > 40:
+        return None
+    if any(token in cleaned for token in ("experience", "knowledge", "ability", "years", "required")):
+        return None
+    if cleaned in COMMON_SKILLS:
+        return cleaned
+    for known in sorted(COMMON_SKILLS, key=len, reverse=True):
+        if known in cleaned:
+            return known
+    return None
+
+
 def extract_jd_requirements(job_description: str) -> list[str]:
     lowered = job_description.lower()
     found: set[str] = {skill for skill in COMMON_SKILLS if skill in lowered}
 
     for pattern in JD_SKILL_PATTERNS:
         for match in pattern.findall(job_description):
-            for fragment in re.split(r"[,/&]| and ", match):
-                cleaned = re.sub(r"\s+", " ", fragment.strip(" .;:-"))
-                if 2 <= len(cleaned) <= 40:
-                    found.add(cleaned.lower())
+            for fragment in re.split(r"[,/&]| and | or ", match):
+                normalized = _normalize_jd_skill(fragment)
+                if normalized:
+                    found.add(normalized)
 
     bullet_terms = re.findall(r"[-•*]\s+([^\n]{3,80})", job_description)
     for term in bullet_terms:
         lowered_term = term.lower()
-        for skill in COMMON_SKILLS:
+        for skill in sorted(COMMON_SKILLS, key=len, reverse=True):
             if skill in lowered_term:
                 found.add(skill)
+
+    found.discard("r")
+    if re.search(r"\b(?:language\s+)?r\b|\br\s+programming\b", lowered):
+        found.add("r")
 
     return sorted(found, key=len, reverse=True)[:25]
 
