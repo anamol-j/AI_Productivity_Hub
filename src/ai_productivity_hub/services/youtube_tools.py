@@ -16,11 +16,26 @@ def extract_video_id(url: str) -> str:
     return match.group(1) if match else ""
 
 
+def _normalize_transcript_item(item: object) -> dict:
+    if isinstance(item, dict):
+        return item
+    return {
+        "text": getattr(item, "text", ""),
+        "start": getattr(item, "start", 0),
+        "duration": getattr(item, "duration", None),
+    }
+
+
 def fetch_transcript(url: str) -> list[dict]:
     video_id = extract_video_id(url)
     if not video_id:
         raise ValueError("Could not extract a YouTube video ID from the provided URL.")
-    return YouTubeTranscriptApi.get_transcript(video_id)
+    transcript_list = YouTubeTranscriptApi().list(video_id)
+    try:
+        transcript = transcript_list.find_transcript(["en"])
+    except Exception:
+        transcript = transcript_list[0]
+    return [ _normalize_transcript_item(item) for item in transcript.fetch() ]
 
 
 def transcript_to_text(transcript: list[dict]) -> str:

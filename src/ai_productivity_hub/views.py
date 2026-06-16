@@ -27,7 +27,6 @@ MENU_OPTIONS = [
     "Meeting Notes Agent",
     "Email Generator",
     "Project Generator",
-    "Settings",
 ]
 
 WORKFLOW_NOTES = {
@@ -38,7 +37,6 @@ WORKFLOW_NOTES = {
     "Meeting Notes Agent": "Decisions and tasks",
     "Email Generator": "Ready drafts",
     "Project Generator": "Plans and scope",
-    "Settings": "Provider status",
 }
 
 ACTION_LABELS = {
@@ -58,7 +56,6 @@ NAV_ICONS = {
     "Meeting Notes Agent": "Meeting",
     "Email Generator": "Email",
     "Project Generator": "Project",
-    "Settings": "Settings",
 }
 
 
@@ -77,7 +74,6 @@ def render_app(config: AppConfig) -> None:
         "Meeting Notes Agent": lambda: render_meeting_notes_page(client),
         "Email Generator": lambda: render_email_page(client),
         "Project Generator": lambda: render_project_page(client),
-        "Settings": lambda: render_settings(config),
     }
     routes[menu]()
 
@@ -369,34 +365,6 @@ def render_project_page(client: AIClient) -> None:
             """
         ).strip()
         _result_panel(client.try_generate(system_prompt, user_prompt, fallback))
-
-
-def render_settings(config: AppConfig) -> None:
-    _page_header("Settings", "Environment-backed provider configuration.")
-    _provider_banner(config)
-
-    st.markdown("#### Active Configuration")
-    st.code(
-        dedent(
-            f"""
-            LLM_PROVIDER={config.llm_provider}
-            ACTIVE_MODEL={config.active_model}
-            OPENAI_MODEL={config.openai_model}
-            GEMINI_MODEL={config.gemini_model}
-            GROQ_MODEL={config.groq_model}
-            """
-        ).strip(),
-        language="bash",
-    )
-
-    rows = [
-        ("OpenAI", config.openai_api_key),
-        ("Gemini", config.gemini_api_key),
-        ("Groq", config.groq_api_key),
-    ]
-    for name, value in rows:
-        state = "Configured" if value.strip() else "Missing"
-        st.markdown(f"<div class='status-row'><strong>{name}</strong><span>{state}</span></div>", unsafe_allow_html=True)
 
 
 def _render_sidebar(config: AppConfig) -> str:
